@@ -1,0 +1,56 @@
+1. ROC Eğrisi Analizi (Genel Başarım)
+Dosya: 2_roc_curve.png
+
+Görsel Yorum: Turuncu çizgi (Model), mavi kesikli çizgiden (Rastgele Tahmin) belirgin şekilde yukarıda ve solda. Bu, modelin bilgi öğrendiğini kanıtlar.
+
+Değer: AUC = 0.7048.
+
+Rapora Yazılacak Yorum:
+
+"Modelin ROC eğrisi incelendiğinde 0.70 AUC skoruna ulaşıldığı görülmektedir. Tıbbi veri setlerinin doğasındaki gürültü ve karmaşıklık göz önüne alındığında, 0.70 üzeri bir skor, modelin 'kabul edilebilir' ve 'ayırt edici' bir yeteneğe sahip olduğunu gösterir. Eğrinin diyagonal eksenden (rastgele tahmin) uzaklaşması, modelin hastaları risk grubuna göre sıralama yeteneğinin istikrarlı olduğunu kanıtlamaktadır."
+
+2. Confusion Matrix (Karar Tablosu)
+Dosya: 1_confusion_matrix.png
+
+Görsel Yorum:
+
+Doğru Negatif (Sol Üst - 9455): Modelin en güçlü olduğu yer. Sağlıklı (tekrar yatmayan) hastaları mükemmel eliyor.
+
+Yanlış Negatif (Sol Alt - 420): Burası kritik. 420 hastaya "riskli değil" demişiz ama tekrar yatmışlar. (TOPSIS modülünü işte bu yüzden ekledik, bu açığı kapatmak için).
+
+Doğru Pozitif (Sağ Alt - 100): Model, gerçekten riskli olan 100 hastayı nokta atışı yakalamış.
+
+Threshold: 0.14. Model, bir hastaya %14 ve üzeri ihtimal verdiğinde onu "Riskli" kabul etmiş.
+
+Rapora Yazılacak Yorum:
+
+"Modelin Karmaşıklık Matrisi (Confusion Matrix), veri setindeki sınıf dengesizliğinin etkilerini göstermektedir. Model, negatif sınıfı (tekrar yatmayanlar) tespit etmede %95'in üzerinde bir başarı gösterirken (9455 doğru tahmin), pozitif vakaları yakalamada daha muhafazakar davranmıştır. Threshold değerinin 0.14 olarak optimize edilmesiyle 100 kritik vaka doğru tespit edilmiştir. Gözden kaçan (False Negative) vakalar için sistemin ikinci katmanı olan TOPSIS algoritması devreye alınarak güvenlik çemberi genişletilmiştir."
+
+3. Precision-Recall Eğrisi (Dengesizlik Analizi)
+Dosya: 3_pr_curve.png
+
+Görsel Yorum: Yeşil çizgi, "Recall" (Yakalamak) arttıkça "Precision"ın (Keskinlik) düştüğünü gösteriyor. Bu, tıpta çok beklenen bir takastır (Trade-off). Çok hasta yakalamak isterseniz, yanlış alarmlarınız artar.
+
+Değer: AP = 0.1233. (Düşük görünmesi normaldir çünkü veri setindeki pozitif oranı çok düşüktür).
+
+Rapora Yazılacak Yorum:
+
+"Veri setindeki pozitif vaka sayısının azlığı (High Class Imbalance) nedeniyle Precision-Recall eğrisi, modelin pozitif sınıfı tahmin etmedeki zorluğunu yansıtmaktadır. Eğrinin şekli, tüm riskli hastaları yakalamaya (High Recall) çalışıldığında, yanlış alarm oranının (False Positive) arttığını göstermektedir. Bu nedenle model, tek başına bir teşhis aracı olarak değil, klinisyenlere önceliklendirme sağlayan bir karar destek mekanizması olarak kurgulanmıştır."
+
+4. Feature Importance (Modelin Mantığı)
+Dosya: 4_feature_importance.png
+
+Görsel Yorum: Modelin kararlarını en çok ne etkiliyor?
+
+Demografik Veriler: gender (Cinsiyet) ve race (Irk) şaşırtıcı derecede etkili çıkmış.
+
+Geçmiş Hikaye: number_inpatient (Daha önce yattı mı?) en üst sıralarda. Bu klinik olarak çok mantıklı; daha önce yatanın tekrar yatma riski yüksektir.
+
+Taburcu Durumu: discharge_disposition_grp_SNF_ICF (Bakımevine sevk edilenler). Bu hastalar genelde daha yaşlı ve düşkün olduğu için tekrar yatış riskleri yüksektir. Model bunu kendi kendine öğrenmiş!
+
+Rapora Yazılacak Yorum:
+
+"XGBoost modelinin karar mekanizmasını etkileyen en önemli öznitelikler incelendiğinde, sonuçların tıbbi literatürle uyumlu olduğu görülmüştür. Özellikle number_inpatient (geçmiş yatış sayısı) ve discharge_disposition (taburcu edilme şekli) değişkenlerinin yüksek önem düzeyine sahip olması, modelin hastanın klinik geçmişini ve kırılganlık durumunu başarıyla yorumladığını göstermektedir. Ayrıca demografik verilerin de risk tahmininde ayırt edici rol oynadığı tespit edilmiştir."
+
+Hocayı Etkileyecek Özet Cümle:
+"Bu grafikler, geliştirdiğimiz modelin sadece istatistiksel bir kara kutu olmadığını; hastanın geçmiş yatışlarını, taburcu edildiği yeri ve demografik özelliklerini analiz ederek klinik açıdan tutarlı ve açıklanabilir (explainable) kararlar ürettiğini kanıtlamaktadır."

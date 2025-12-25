@@ -1,7 +1,7 @@
 import sys
 import os
 
-# --- DÜZELTME BURADA ---
+# DÜZELTME (ömer)
 # Eski isim: preprocess_diabetes_dataset
 # Yeni isim: preprocess_diabetes_dataset_for_training
 from src.data_preprocessing.preprocess_diabetes import preprocess_diabetes_dataset_for_training
@@ -12,7 +12,7 @@ if __name__ == "__main__":
 
     print("🚀 Preprocessing işlemi başlatılıyor...")
 
-    # Fonksiyon ismi aşağıda da güncellendi
+    # Fonksiyon ismi aşağıda da güncellendi (unutma)
     (
         X_train_res,
         y_train_res,
@@ -27,7 +27,7 @@ if __name__ == "__main__":
         cat_imputer
     ) = preprocess_diabetes_dataset_for_training(csv_path=my_csv_path)
 
-    print("\n✅ Preprocess başarıyla tamamlandı!")
+    print("\nPreprocess başarıyla tamamlandı!")
     print("-" * 30)
     print(f"Train (SMOTE)  : {X_train_res.shape}")
     print(f"Valid          : {X_valid.shape}")

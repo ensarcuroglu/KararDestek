@@ -3,17 +3,11 @@
 import pandas as pd
 
 def map_icd9_to_group(code: str) -> str:
-    """
-    ICD-9 tanı kodunu klinik üst gruplara çevirir.
-    Örnek gruplar: Diabetes, Circulatory, Respiratory, Digestive, Injury, vb.
-    Dataset'teki diag_1, diag_2, diag_3 kolonları için kullanılacak.
-    """
+
     if pd.isna(code) or code == '?' or code == 'Missing':
         return "Missing"
 
-    # '250.13' gibi değerleri sayıya çevir
     try:
-        # V veya E ile başlayan özel kodlar varsa "Other"
         if isinstance(code, str) and (code.startswith('V') or code.startswith('E')):
             return "Other"
         val = float(code)

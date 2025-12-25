@@ -9,11 +9,8 @@ from sklearn.preprocessing import StandardScaler
 from imblearn.over_sampling import SMOTE
 from src.data_preprocessing.icd_mapping import map_icd9_to_group
 
-# Pandas Downcasting uyarısını susturmak için (Opsiyonel ama temiz çıktı için iyi)
 pd.set_option('future.no_silent_downcasting', True)
 
-
-# --- BÖLÜM 1: YARDIMCI MAPPER FONKSİYONLARI (Stateless) ---
 
 def _map_age_to_midpoint(age_str: str) -> float:
     age_map = {
@@ -69,22 +66,16 @@ def _map_discharge_disposition(v) -> str:
         return "Other"
 
 
-# --- BÖLÜM 2: ORTAK DÖNÜŞÜM MANTIĞI (Feature Engineering) ---
-
 def transform_features_base(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Ham veriyi alır, temizler ve feature engineering yapar.
-    """
     df = df.copy()
 
     # '?' -> NaN
     df = df.replace("?", np.nan)
 
-    # 1. Yaş Dönüşümü
     if 'age' in df.columns:
         df["age_mid"] = df["age"].apply(_map_age_to_midpoint).astype(float)
 
-    # 2. ID Gruplamaları
+    # ID Gruplamaları
     if 'admission_type_id' in df.columns:
         df["admission_type_grp"] = df["admission_type_id"].apply(_map_admission_type)
     if 'admission_source_id' in df.columns:
@@ -92,12 +83,12 @@ def transform_features_base(df: pd.DataFrame) -> pd.DataFrame:
     if 'discharge_disposition_id' in df.columns:
         df["discharge_disposition_grp"] = df["discharge_disposition_id"].apply(_map_discharge_disposition)
 
-    # 3. ICD Kodları ve Gruplama
+    # ICD Kodları ve Gruplama
     for col in ["diag_1", "diag_2", "diag_3"]:
         if col in df.columns:
             df[f"{col}_group"] = df[col].astype(str).apply(map_icd9_to_group)
 
-    # 4. İlaç Sayısı Hesaplama
+    # İlaç Sayısı Hesaplama
     med_cols = [
         "metformin", "repaglinide", "nateglinide", "chlorpropamide", "glimepiride",
         "acetohexamide", "glipizide", "glyburide", "tolbutamide", "pioglitazone",
@@ -108,21 +99,18 @@ def transform_features_base(df: pd.DataFrame) -> pd.DataFrame:
     available_meds = [c for c in med_cols if c in df.columns]
 
     if available_meds:
-        # replace işleminde downcasting uyarısını önlemek için infer_objects() kullanımı
         med_tmp = df[available_meds].replace({"No": 0, "Steady": 1, "Up": 1, "Down": 1}).infer_objects(copy=False)
         med_tmp = med_tmp.astype(float)
         df["total_meds_active"] = med_tmp.sum(axis=1)
     elif "num_medications" in df.columns:
         df["total_meds_active"] = df["num_medications"]
 
-    # 5. Service Utilization
     df["service_utilization"] = (
             df.get("number_outpatient", 0) +
             df.get("number_emergency", 0) +
             df.get("number_inpatient", 0)
     )
 
-    # 6. Max Glu & A1C
     glu_map = {"None": 0, "Norm": 1, ">200": 2, ">300": 3}
     a1c_map = {"None": 0, "Norm": 1, ">7": 2, ">8": 3}
 
@@ -131,9 +119,6 @@ def transform_features_base(df: pd.DataFrame) -> pd.DataFrame:
     if "A1Cresult" in df.columns:
         df["A1Cresult_ord"] = df["A1Cresult"].map(a1c_map)
 
-    # 7. Gereksiz Sütunları Temizle
-    # 'readmitted' ve 'target' kolonlarını burada silmiyoruz, çünkü eğitim fonksiyonunda y'yi oluşturmak için lazım olabilir.
-    # Ancak feature olarak girmemesi için listeye ekliyoruz, drop işlemi aşağıda yapılacak.
 
     potential_drop_cols = [
                               "weight", "payer_code", "medical_specialty", "age", "max_glu_serum", "A1Cresult",
@@ -146,9 +131,6 @@ def transform_features_base(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-
-# --- BÖLÜM 3: EĞİTİM İÇİN ÖZEL AKIŞ (Training Pipeline) ---
-
 def preprocess_diabetes_dataset_for_training(
         csv_path: str = "data/raw/diabetic_data.csv",
         random_state: int = 42,
@@ -156,31 +138,23 @@ def preprocess_diabetes_dataset_for_training(
     print(f"[INFO] Veri yükleniyor: {csv_path}")
     df = pd.read_csv(csv_path)
 
-    # 1. Hedef Değişkeni DataFrame üzerinde oluştur (henüz ayırma!)
     df["target"] = (df["readmitted"] == "<30").astype(int)
 
-    # 2. Satır Filtreleme (Target da filtrelenecek böylece)
     invalid_discharge = [11, 13, 14, 19, 20, 21]
     df = df[~df["discharge_disposition_id"].isin(invalid_discharge)]
     df = df.sort_values(["patient_nbr", "encounter_id"])
     df = df.drop_duplicates(subset="patient_nbr", keep="last")
 
-    # --- KRİTİK DÜZELTME: y, filtrelemeden SONRA ayrılıyor ---
     y = df["target"].values
 
-    # 3. Ortak Dönüşümleri Uygula
     df_features = transform_features_base(df)
 
-    # 'readmitted' ve 'target' sütunları transform_features_base içinde silinmemiş olabilir (logic gereği),
-    # Feature matrisine girmemeleri için şimdi siliyoruz.
     cols_to_drop = ["readmitted", "target"]
     df_features = df_features.drop(columns=[c for c in cols_to_drop if c in df_features.columns])
 
-    # 4. Numerik/Kategorik Ayrımı
     cat_cols = df_features.select_dtypes(include=["object", "category"]).columns.tolist()
     num_cols = [c for c in df_features.columns if c not in cat_cols]
 
-    # 5. Imputing (Eksik Veri Tamamlama) - EĞİTİMDE ÖĞRENİLİR (FIT)
     num_imputer = SimpleImputer(strategy="median")
     cat_imputer = SimpleImputer(strategy="most_frequent")
 
@@ -196,24 +170,22 @@ def preprocess_diabetes_dataset_for_training(
     X_processed = pd.concat([X_num, X_cat_oh], axis=1)
     feature_names = list(X_processed.columns)
 
-    # Debug: Boyut kontrolü
     print(f"[DEBUG] X shape: {X_processed.shape}, y shape: {y.shape}")
     if len(X_processed) != len(y):
         raise ValueError(f"Feature ve Target boyutları uyuşmuyor! X: {len(X_processed)}, y: {len(y)}")
 
-    # 6. Split
     X_train_val, X_test, y_train_val, y_test = train_test_split(X_processed, y, test_size=0.15,
                                                                 random_state=random_state, stratify=y)
     X_train, X_valid, y_train, y_valid = train_test_split(X_train_val, y_train_val, test_size=0.176,
                                                           random_state=random_state, stratify=y_train_val)
 
-    # 7. Scaling - EĞİTİMDE ÖĞRENİLİR (FIT)
+    # Scaling
     scaler = StandardScaler()
     X_train.loc[:, num_cols] = scaler.fit_transform(X_train[num_cols])
     X_valid.loc[:, num_cols] = scaler.transform(X_valid[num_cols])
     X_test.loc[:, num_cols] = scaler.transform(X_test[num_cols])
 
-    # 8. SMOTE
+    # SMOTE
     smote = SMOTE(random_state=random_state)
     X_train_res, y_train_res = smote.fit_resample(X_train, y_train)
 

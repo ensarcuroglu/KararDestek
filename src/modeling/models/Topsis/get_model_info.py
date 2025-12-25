@@ -2,21 +2,21 @@ import os
 import joblib
 import pandas as pd
 
+#dosya yolu hataları giderildi(ensar)
 
 def find_and_read():
-    print("--- MODEL ARAMA TARAMASI BAŞLATILIYOR ---")
+    print("MODEL ARAMA TARAMASI")
 
-    # 1. Proje Ana Dizinini Bul
     current_dir = os.path.dirname(os.path.abspath(__file__))
     root_dir = current_dir
 
-    # 'KararDestek2' klasörüne kadar yukarı çık
+    # 'KararDestek2' klasörüne kadar yukarı çık (git clone hatası için çözüm, ensar)
     while "KararDestek2" not in os.path.basename(root_dir):
         parent = os.path.dirname(root_dir)
         if parent == root_dir: break
         root_dir = parent
 
-    # Eğer döngü bulamazsa manuel sabitleme (senin yolun belli)
+
     if "KararDestek" not in root_dir:
         root_dir = r"D:\Ensar Dosya\KararDestek\KararDestek2"
 
@@ -25,19 +25,17 @@ def find_and_read():
 
     found_path = None
 
-    # 2. Tüm klasörleri gez (Recursive Search)
     for root, dirs, files in os.walk(root_dir):
         if "model.joblib" in files and "xgb_weighted_f2" in os.path.basename(root):
             found_path = os.path.join(root, "model.joblib")
-            print(f"\n✅ BULUNDU! Dosya Yolu: {found_path}")
+            print(f"\nBULUNDU! Dosya Yolu: {found_path}")
             break
 
     if not found_path:
-        print("\n❌ HATA: Dosya projenin hiçbir yerinde bulunamadı.")
+        print("\nHATA: Dosya projenin hiçbir yerinde bulunamadı.")
         print("Lütfen önceki 'train' kodunun gerçekten 'models' klasörü oluşturup oluşturmadığına bak.")
         return
 
-    # 3. Modeli Yükle ve Bilgileri Oku
     print("[INFO] Model yükleniyor...")
     try:
         saved_data = joblib.load(found_path)

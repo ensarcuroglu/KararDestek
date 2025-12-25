@@ -17,44 +17,31 @@ from sklearn.metrics import (
     confusion_matrix
 )
 
-# Preprocess fonksiyonunu içe aktar
-# (Bu dosyanın src/modeling içinde olduğunu varsayıyoruz)
 from src.data_preprocessing.preprocess_diabetes import preprocess_diabetes_dataset
 
 
 def find_best_threshold(y_true, y_prob):
-    """F1 skorunu maksimize eden en iyi eşik değerini bulur."""
     precisions, recalls, thresholds = precision_recall_curve(y_true, y_prob)
-    # F1 hesapla (0'a bölünme hatasını önlemek için 1e-9 ekledik)
     f1s = 2 * (precisions * recalls) / (precisions + recalls + 1e-9)
 
     best_idx = np.argmax(f1s)
-    # thresholds dizisi precision/recall dizisinden 1 eleman kısadır
     best_threshold = thresholds[best_idx] if best_idx < len(thresholds) else 0.5
 
     return float(best_threshold), float(f1s[best_idx])
 
 
 def main():
-    # ---------------------------------------------------------
-    # 1. DOSYA YOLLARINI DİNAMİK OLARAK BELİRLEME (HATA ÇÖZÜMÜ)
-    # ---------------------------------------------------------
-    # Şu anki dosyanın (train_random_forest...) bulunduğu klasör: .../src/modeling
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
-    # Proje ana dizinine (root) çıkmak için 2 kez yukarı gidiyoruz: .../KararDestek2
     project_root = os.path.dirname(os.path.dirname(current_dir))
 
-    # CSV dosyasının tam yolu
+    # CSV dosyası
     csv_path_full = os.path.join(project_root, "data", "raw", "diabetic_data.csv")
 
     print(f"[INFO] Proje Ana Dizini: {project_root}")
     print(f"[INFO] CSV Dosya Yolu: {csv_path_full}")
 
-    # ---------------------------------------------------------
-
     print("[INFO] Preprocess çalıştırılıyor...")
-    # csv_path parametresini elle veriyoruz
     (
         X_train,
         y_train,
@@ -79,12 +66,12 @@ def main():
     print("[INFO] Model eğitiliyor...")
     model.fit(X_train, y_train)
 
-    # --- Validation Seti ile Threshold Belirleme ---
+    # Threshold Belirleme
     val_probs = model.predict_proba(X_val)[:, 1]
     best_threshold, best_f1 = find_best_threshold(y_val, val_probs)
     print(f"[INFO] Valid için en iyi threshold: {best_threshold:.4f} (F1={best_f1:.4f})")
 
-    # --- Test Seti Değerlendirmesi ---
+    # Test Seti Değerlendirmesi
     test_probs = model.predict_proba(X_test)[:, 1]
     test_preds = (test_probs >= best_threshold).astype(int)
 
@@ -95,7 +82,7 @@ def main():
     rec = recall_score(y_test, test_preds, zero_division=0)
     f1 = f1_score(y_test, test_preds, zero_division=0)
 
-    print("\n📊 Test Sonuçları (Random Forest + optimized threshold):")
+    print("\nTest Sonuçları (Random Forest + optimized threshold):")
     print(f"roc_auc   : {roc_auc:.4f}")
     print(f"pr_auc    : {pr_auc:.4f}")
     print(f"accuracy  : {acc:.4f}")
@@ -110,13 +97,13 @@ def main():
     print("\nClassification Report:")
     print(classification_report(y_test, test_preds, digits=4, zero_division=0))
 
-    # --- Kaydetme İşlemleri ---
-    # Kayıt yollarını da proje ana dizinine göre ayarlayalım
+    # Kaydetme İşlemleri (ömerin model ismi = model.joblib)
+
     output_dir = os.path.join(project_root, "models", "rf_preprocessed")
     os.makedirs(output_dir, exist_ok=True)
 
-    model_path = os.path.join(output_dir, "model.joblib")
-    metrics_path = os.path.join(output_dir, "metrics.json")
+    model_path = os.path.join(output_dir, "model_ensar.joblib")
+    metrics_path = os.path.join(output_dir, "metrics_ensar.json")
 
     joblib.dump(model, model_path)
 
@@ -133,8 +120,8 @@ def main():
     with open(metrics_path, "w") as f:
         json.dump(metrics, f, indent=4)
 
-    print(f"\n💾 Model kaydedildi: {model_path}")
-    print(f"💾 Metrikler kaydedildi: {metrics_path}")
+    print(f"\nModel kaydedildi: {model_path}")
+    print(f"Metrikler kaydedildi: {metrics_path}")
 
 
 if __name__ == "__main__":
